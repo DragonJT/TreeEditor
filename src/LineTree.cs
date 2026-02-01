@@ -3,15 +3,13 @@ using Raylib_cs;
 
 interface ILineTree
 {
-    void Draw(Layout layout, int indent, bool selected);
-    string GetCode();
+    void Draw(ILayout layout);
     string ToC(Tree tree);
 }
 
 interface IParameter
 {
-    void Draw(Layout layout);
-    string GetCode();
+    void Draw(ILayout layout);
     string ToC();
 }
 
@@ -20,41 +18,64 @@ interface IParser
     ILineTree Parse(string code);
 }
 
-class InvocationStmt(string name, IExpression value) : ILineTree
-{
-    public readonly string name = name;
-    public readonly IExpression value = value;
 
-    public void Draw(Layout layout, int indent, bool selected)
+class Arguments(IExpression[] args)
+{
+    public readonly IExpression[] args = args;
+
+    public void Draw(ILayout layout)
     {
-        layout.DrawIndent(indent, selected);
-        layout.DrawText(name, Color.Blue);
         layout.DrawText("(", Color.White);
-        value.Draw(layout);
+        for(var i = 0; i < args.Length; i++)
+        {
+            args[i].Draw(layout);
+            if(i < args.Length - 1)
+            {
+                layout.DrawText(",", Color.White);
+                layout.DrawSpace();
+            }
+        }
         layout.DrawText(")", Color.White);
     }
 
-    public string GetCode()
+    public string ToC()
     {
-        return $"{name}({value})";
+        return "("+string.Join(", ", args.Select(a=>a.ToC()))+")";
+    }
+}
+
+class InvocationStmt(string name, Arguments args) : ILineTree
+{
+    public readonly string name = name;
+    public readonly Arguments args = args;
+
+    public void Draw(ILayout layout)
+    {
+        layout.DrawText(name, Color.Blue);
+        args.Draw(layout);
     }
 
     public string ToC(Tree tree)
     {
         if(name == "Print")
         {
-            var type = value.Type();
+            if(args.args.Length != 1)
+            {
+                throw new Exception();
+            }
+            var arg = args.args[0];
+            var type = arg.Type();
             if(type == "string")
             {
-                return $"printf(\"%s\\n\", {value.ToC()});\n";
+                return $"printf(\"%s\\n\", {arg.ToC()});\n";
             }
             else if(type == "int")
             {
-                return $"printf(\"%i\\n\", {value.ToC()});\n";
+                return $"printf(\"%i\\n\", {arg.ToC()});\n";
             }
             else if(type == "float")
             {
-                return $"printf(\"%f\\n\", {value.ToC()});\n";
+                return $"printf(\"%f\\n\", {arg.ToC()});\n";
             }
             else
             {
@@ -63,8 +84,29 @@ class InvocationStmt(string name, IExpression value) : ILineTree
         }
         else
         {
-            return $"{name}({value});\n";   
+            return $"{name}{args.ToC()};\n";   
         }
+    }
+}
+
+class WhileStmt(IExpression condition) : ILineTree, IParser
+{
+    public readonly IExpression condition = condition;
+
+    public void Draw(ILayout layout)
+    {
+        layout.DrawText("while", Color.Magenta);
+        condition.Draw(layout);
+    }
+
+    public ILineTree Parse(string code)
+    {
+        return new Parser(code).ParseStatement();
+    }
+
+    public string ToC(Tree tree)
+    {
+        return $"while({condition.ToC()}){{\n{tree.ToC()}}}\n";
     }
 }
 
@@ -73,16 +115,11 @@ class Parameter(string type, string name) : IParameter
     public readonly string type = type;
     public readonly string name = name;
 
-    public void Draw(Layout layout)
+    public void Draw(ILayout layout)
     {
         layout.DrawText(type, Color.Magenta);
         layout.DrawSpace();
         layout.DrawText(name, Color.Blue);
-    }
-
-    public string GetCode()
-    {
-        return $"{type} {name}";
     }
 
     public string ToC()
@@ -97,9 +134,8 @@ class MethodDecl(string type, string name, IParameter[] parameters) : ILineTree,
     public readonly string name = name;
     public readonly IParameter[] parameters = parameters;
 
-    public void Draw(Layout layout, int indent, bool selected)
+    public void Draw(ILayout layout)
     {
-        layout.DrawIndent(indent, selected);
         layout.DrawText(type, Color.Magenta);
         layout.DrawSpace();
         layout.DrawText(name, Color.Blue);
@@ -114,12 +150,6 @@ class MethodDecl(string type, string name, IParameter[] parameters) : ILineTree,
             }
         }
         layout.DrawText(")", Color.White);
-    }
-
-    public string GetCode()
-    {
-        var parametersCode = string.Join(',', parameters.Select(p=>p.ToC()));
-        return $"{type} {name}({parametersCode})";
     }
 
     public ILineTree Parse(string code)
@@ -139,17 +169,11 @@ class FieldDecl(string type, string name) : ILineTree
     public readonly string type = type;
     public readonly string name = name;
 
-    public void Draw(Layout layout, int indent, bool selected)
+    public void Draw(ILayout layout)
     {
-        layout.DrawIndent(indent, selected);
         layout.DrawText(type, Color.Magenta);
         layout.DrawSpace();
         layout.DrawText(name, Color.Blue);
-    }
-
-    public string GetCode()
-    {
-        return $"{type} {name}";
     }
 
     public string ToC(Tree tree)
@@ -162,16 +186,11 @@ class ClassDecl(string name) : ILineTree, IParser
 {
     public readonly string name = name;
 
-    public void Draw(Layout layout, int indent, bool selected)
+    public void Draw(ILayout layout)
     {
-        layout.DrawIndent(indent, selected);
         layout.DrawText("class", Color.Magenta);
         layout.DrawSpace();
         layout.DrawText(name, Color.Blue);
-    }
-    public string GetCode()
-    {
-        return $"class {name}";
     }
 
     public ILineTree Parse(string code)
@@ -189,16 +208,11 @@ class SingletonDecl(string name) : ILineTree, IParser
 {
     public readonly string name = name;
 
-    public void Draw(Layout layout, int indent, bool selected)
+    public void Draw(ILayout layout)
     {
-        layout.DrawIndent(indent, selected);
         layout.DrawText("singleton", Color.Magenta);
         layout.DrawSpace();
         layout.DrawText(name, Color.Blue);
-    }
-    public string GetCode()
-    {
-        return $"singleton {name}";
     }
 
     public ILineTree Parse(string code)
@@ -214,12 +228,7 @@ class SingletonDecl(string name) : ILineTree, IParser
 
 class Root : ILineTree, IParser
 {
-    public void Draw(Layout layout, int indent, bool selected)
-    {
-        layout.DrawIndent(indent, selected);
-    }
-
-    public string GetCode() => "";
+    public void Draw(ILayout layout){}
 
     public ILineTree Parse(string code)
     {
@@ -234,12 +243,7 @@ class Root : ILineTree, IParser
 
 class Empty : ILineTree
 {
-    public void Draw(Layout layout, int indent, bool selected)
-    {
-        layout.DrawIndent(indent, selected);
-    }
-
-    public string GetCode() => "";
+    public void Draw(ILayout layout){}
 
     public string ToC(Tree tree)
     {

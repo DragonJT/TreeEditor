@@ -3,7 +3,7 @@ class Invalid(string text) : IExpression, IParameter
 {
     public string text = text;
 
-    public void Draw(Layout layout)
+    public void Draw(ILayout layout)
     {
         layout.DrawInvalidText(text);
     }
@@ -27,9 +27,8 @@ class InvalidLine(string text) : ILineTree
 {
     public string text = text;
 
-    public void Draw(Layout layout, int indent, bool selected)
+    public void Draw(ILayout layout)
     {
-        layout.DrawIndent(indent, selected);
         layout.DrawInvalidText(text);
     }
     public string GetCode()
@@ -68,16 +67,6 @@ class Parser
     bool AtEnd()
     {
         return index >= tokens.Count;
-    }
-
-    bool IsOther(string other)
-    {
-        if(index < tokens.Count && tokens[index].kind == TokenKind.Error && tokens[index].value == other)
-        {
-            index++;
-            return true;
-        }
-        return false;
     }
 
     bool IsEmpty()
@@ -183,13 +172,22 @@ class Parser
     {
         if(tokens.Count == 1)
         {
-            if(tokens[index].kind == TokenKind.Number)
+            var t = tokens[index];
+            if(t.kind == TokenKind.Number)
             {
                 return new NumberExpr(tokens[index].value);
             }
-            else if(tokens[index].kind == TokenKind.String)
+            else if(t.kind == TokenKind.String)
             {
                 return new StringExpr(tokens[index].value);
+            }
+            else if(t.kind == TokenKind.Keyword && t.value == "true")
+            {
+                return new BoolExpr("true");
+            }
+            else if(t.kind == TokenKind.Keyword && t.value == "false")
+            {
+                return new BoolExpr("false");
             }
         }
         return new Invalid(code);
@@ -205,10 +203,15 @@ class Parser
         {
             if (IsParentheses(out string exprcode) && AtEnd())
             {          
-                var value = new Parser(exprcode).ParseExpression();
-                return new InvocationStmt(name, value);
+                var args = new Arguments([..exprcode.Split(',').Select(c=>new Parser(c).ParseExpression())]);
+                return new InvocationStmt(name, args);
             }
             return new InvalidLine(code);
+        }
+        else if (IsKeyword("while"))
+        {
+            var condition = new Parser(code[5..]).ParseExpression();
+            return new WhileStmt(condition);
         }
         else
         {

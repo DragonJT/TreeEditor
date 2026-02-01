@@ -1,6 +1,33 @@
 using Raylib_cs;
 
-class Layout
+interface ILayout
+{
+    void DrawSpace();
+    void DrawText(string text, Color color);
+    void DrawInvalidText(string text);
+}
+
+class TextLayout : ILayout
+{
+    public string text = "";
+
+    public void DrawInvalidText(string text)
+    {
+        this.text += text;
+    }
+
+    public void DrawSpace()
+    {
+        text += ' ';
+    }
+
+    public void DrawText(string text, Color color)
+    {
+        this.text += text;
+    }
+}
+
+class DrawLayout : ILayout
 {
     readonly int spacing = 6;
     readonly int fontSize = 35;
@@ -11,7 +38,7 @@ class Layout
     int x;
     int y;
 
-    public Layout()
+    public DrawLayout()
     {
         x = border;
         y = border;
@@ -77,9 +104,16 @@ class Tree
         }
     }
 
+    string GetCode()
+    {
+        var layout = new TextLayout();
+        lineTree.Draw(layout);
+        return layout.text;
+    }
+
     public bool Backspace()
     {
-        var code = lineTree.GetCode();
+        var code = GetCode();
         if(code.Length > 0)
         {
             code = code[..^1];
@@ -94,7 +128,7 @@ class Tree
 
     public void InsertCode(string text)
     {
-        var code = lineTree.GetCode();
+        var code = GetCode();
         code += text;
         if(Parent.lineTree is IParser parser)
         {
@@ -102,9 +136,10 @@ class Tree
         }
     }
 
-    void Draw(Layout layout, int indent)
+    void Draw(DrawLayout layout, int indent)
     {
-        lineTree.Draw(layout, indent, Program.selected == this);
+        layout.DrawIndent(indent, Program.selected == this);
+        lineTree.Draw(layout);
         layout.NewLine();
         foreach(var c in children)
         {
@@ -114,7 +149,7 @@ class Tree
 
     public void Draw()
     {
-        Layout layout = new();
+        DrawLayout layout = new();
         foreach(var c in children)
         {
             c.Draw(layout, 0);

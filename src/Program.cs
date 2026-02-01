@@ -13,7 +13,7 @@ class CompileAndRunC
 
         File.WriteAllText(Path.Combine(buildDir, cFile), ccode);
 
-        Run("gcc", $"{buildDir}/{cFile} -o {buildDir}/{binary}");
+        Run("gcc", $"{buildDir}/{cFile} -o {buildDir}/{binary} -lraylib");
         Run($"./{buildDir}/{binary}", "");
     }
 
@@ -78,7 +78,7 @@ static class Program
             {
                 if (IsKeyPressed(KeyboardKey.R))
                 {
-                    var ccode = "#include<stdio.h>\n" + root.ToC();
+                    var ccode = "#include<stdio.h>\n" + "#include \"raylib.h\"\n" + root.ToC();
                     CompileAndRunC.Run(ccode);
                 }
             }

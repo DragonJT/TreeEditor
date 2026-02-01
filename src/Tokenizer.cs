@@ -23,7 +23,8 @@ class Tokenizer(string code)
     readonly string code = code;
     int index = 0;
     readonly HashSet<string> operators = ["+", "-", "&", "|", "=", "<", ">", "<=", ">=", "&&", "||", "==", "++", "--"];
-    readonly HashSet<string> keywords = ["static", "class", "singleton", "if", "this", "var", "return"];
+    readonly HashSet<string> keywords = ["static", "class", "singleton", 
+        "if", "while", "this", "var", "return", "true", "false"];
 
     static bool IsDigit(char c)
     {
