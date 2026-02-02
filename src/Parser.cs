@@ -1,35 +1,20 @@
 
 
-class Invalid(string text) : IExpression, IParameter
+using Raylib_cs;
+
+class Invalid(string text, string errorMsg) : IExpression, IParameter, ILineTree
 {
     public string text = text;
+    public string errorMsg = errorMsg;
 
     public void Draw(ILayout layout)
     {
-        layout.DrawInvalidText(text);
-    }
-    public string GetCode()
-    {
-        return text;
+        layout.DrawText(text, Color.White, "SyntaxError: "+errorMsg);
     }
 
     public string Type()
     {
-        throw new Exception();
-    }
-}
-
-class InvalidLine(string text) : ILineTree
-{
-    public string text = text;
-
-    public void Draw(ILayout layout)
-    {
-        layout.DrawInvalidText(text);
-    }
-    public string GetCode()
-    {
-        return text;
+        return "error";
     }
 }
 
@@ -109,6 +94,16 @@ class Parser(Tokens tokens)
         return false;
     }
 
+    bool IsOperator(string op)
+    {
+        if(index < tokens.Count && tokens[index].kind == TokenKind.Operator && tokens[index].value == op)
+        {
+            index++;
+            return true;
+        }
+        return false;
+    }
+
     bool AtEnd()
     {
         return index >= tokens.Count;
@@ -155,7 +150,7 @@ class Parser(Tokens tokens)
             {
                 return new ClassDecl(name);
             }
-            return new InvalidLine(tokens.GetCode());
+            return new Invalid(tokens.GetCode(), "Expecting name");
         }
         else if (IsKeyword("singleton"))
         {
@@ -163,11 +158,11 @@ class Parser(Tokens tokens)
             {
                 return new SingletonDecl(name);
             }
-            return new InvalidLine(tokens.GetCode());
+            return new Invalid(tokens.GetCode(), "Expecting name");
         }
         else
         {
-            return new InvalidLine(tokens.GetCode());
+            return new Invalid(tokens.GetCode(), "Unknown syntax");
         }
     }
 
@@ -177,7 +172,7 @@ class Parser(Tokens tokens)
         {
             return new Parameter(type, name);
         }
-        return new Invalid(tokens.GetCode());
+        return new Invalid(tokens.GetCode(), "Expecting type and name");
     }
 
     public ILineTree ParseClassMember()
@@ -207,14 +202,14 @@ class Parser(Tokens tokens)
                 }
                 else
                 {
-                    return new InvalidLine(tokens.GetCode());
+                    return new Invalid(tokens.GetCode(), "Expecting field or method");
                 }
             }
-            return new InvalidLine(tokens.GetCode());
+            return new Invalid(tokens.GetCode(), "Expecting field or method");
         }
         else
         {
-            return new InvalidLine(tokens.GetCode());
+            return new Invalid(tokens.GetCode(), "Expecting field or method");
         }
     }
 
@@ -237,7 +232,14 @@ class Parser(Tokens tokens)
             var t = tokens[index];
             if(t.kind == TokenKind.Number)
             {
-                return new NumberExpr(tokens[index].value);
+                if (t.value.Contains('.'))
+                {
+                    return new FloatExpr(t.value);
+                }
+                else
+                {
+                    return new IntExpr(t.value);
+                }
             }
             else if(t.kind == TokenKind.String)
             {
@@ -270,7 +272,7 @@ class Parser(Tokens tokens)
                 return new UnaryExpr(tokens[0].value, new Parser(tokens.GetTokensAfter(0)).ParseExpression());
             }
         }        
-        return new Invalid(tokens.GetCode());
+        return new Invalid(tokens.GetCode(), "Unknown expression");
     }
 
     public ILineTree ParseStatement()
@@ -279,13 +281,26 @@ class Parser(Tokens tokens)
         {
             return new Empty();
         }
-        else if(IsIdentifier(out string name))
+        else if(IsIdentifier(out string iname))
         {
             if (IsParentheses(out string argsCode) && AtEnd())
             {          
-                return ParseInvocation(name, argsCode);
+                return ParseInvocation(iname, argsCode);
             }
-            return new InvalidLine(tokens.GetCode());
+            return new Invalid(tokens.GetCode(), "Expecting parentheses");
+        }
+        else if (IsKeyword("var"))
+        {
+            if(IsIdentifier(out string name))
+            {
+                if (IsOperator("="))
+                {
+                    var expression = new Parser(tokens.GetTokensAfter(2)).ParseExpression();
+                    return new VarInitializationStmt(name, expression);
+                }
+                return new Invalid(tokens.GetCode(), "= missing");
+            }
+            return new Invalid(tokens.GetCode(), "Identifier missing");
         }
         else if (IsKeyword("while"))
         {
@@ -294,7 +309,7 @@ class Parser(Tokens tokens)
         }
         else
         {
-            return new InvalidLine(tokens.GetCode());
+            return new Invalid(tokens.GetCode(), "Unknown statement");
         }
     }
 

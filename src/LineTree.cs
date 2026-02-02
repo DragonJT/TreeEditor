@@ -71,6 +71,32 @@ class WhileStmt(IExpression condition) : ILineTree, IParser
     }
 }
 
+class VarInitializationStmt : ILineTree
+{
+    public string name;
+    public Variable variable;
+    public IExpression expression;
+
+    public VarInitializationStmt(string name, IExpression expression)
+    {
+        this.name = name;
+        this.expression = expression;
+        variable = new Variable(this, null);
+    }
+
+    public void Draw(ILayout layout)
+    {
+        layout.DrawText("var", Color.Magenta);
+        layout.DrawSpace();
+        layout.DrawText(name, Color.Green);
+        layout.DrawSpace();
+        layout.DrawText("=", new Color(0.3f, 0.7f, 1f));
+        layout.DrawSpace();
+        expression.Draw(layout);
+    }
+
+}
+
 class Parameter(string type, string name) : IParameter
 {
     public readonly string type = type;

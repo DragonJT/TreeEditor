@@ -1,6 +1,7 @@
 
 using Raylib_cs;
 
+
 static class JConsole
 {
     static List<string> lines = [];
@@ -27,17 +28,42 @@ static class JConsole
     }
 }
 
-static class Executer
+static class VM
 {
     static object GetExpression(IExpression expression)
     {
         if(expression is StringExpr stringExpr)
         {
-            return stringExpr.value[1..^1];
+            var s = stringExpr.value;
+            if(s.Length >= 2)
+            {
+                return stringExpr.value[1..^1];
+            }
+            return null;
+        }
+        else if(expression is IdentifierExpr identifierExpr)
+        {
+            if(identifierExpr.variable == null)
+            {
+                return null;
+            }
+            return identifierExpr.variable.value;
+        }
+        else if(expression is FloatExpr floatExpr)
+        {
+            return floatExpr.value;
+        }
+        else if(expression is IntExpr intExpr)
+        {
+            return intExpr.value;
+        }
+        else if(expression is Invalid)
+        {
+            return null;
         }
         else
         {
-            throw new Exception();
+            throw new Exception(expression.GetType().Name);
         }
     }
 
@@ -49,9 +75,20 @@ static class Executer
             {
                 if(invocation.name == "WriteLine")
                 {
-                    var text = (string)GetExpression(invocation.args.args[0]);
-                    JConsole.WriteLine(text);
+                    var value = GetExpression(invocation.args.args[0]);
+                    if(value == null)
+                    {
+                        JConsole.WriteLine("null");
+                    }
+                    else
+                    {
+                        JConsole.WriteLine(value.ToString());
+                    }
                 }
+            }
+            else if(c.LineTree is VarInitializationStmt varInitializationStmt)
+            {
+                varInitializationStmt.variable.value = GetExpression(varInitializationStmt.expression);
             }
         }
     }

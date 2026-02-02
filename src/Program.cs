@@ -83,6 +83,11 @@ static class Program
                                     selected.Delete();
                                     selected = oldParent.GetChild(i-1).LastChild();
                                 }
+                                else
+                                {
+                                    selected.Delete();
+                                    selected = oldParent;
+                                }
                             }
                         }
                     }
@@ -91,7 +96,9 @@ static class Program
             
             DrawLayout layout = new();
             root.Draw(layout, 0);
-            Executer.Execute(root);
+            layout.DrawErrorMsgs();
+            
+            VM.Execute(root);
             Raylib.EndDrawing();
         }
 

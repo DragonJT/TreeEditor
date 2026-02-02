@@ -4,17 +4,12 @@ interface ILayout
 {
     void DrawSpace();
     void DrawText(string text, Color color);
-    void DrawInvalidText(string text);
+    void DrawText(string text, Color color, string errorMsg);
 }
 
 class TextLayout : ILayout
 {
     public string text = "";
-
-    public void DrawInvalidText(string text)
-    {
-        this.text += text;
-    }
 
     public void DrawSpace()
     {
@@ -25,6 +20,17 @@ class TextLayout : ILayout
     {
         this.text += text;
     }
+
+    public void DrawText(string text, Color color, string errorMsg)
+    {
+        this.text += text;
+    }
+}
+
+class ErrorMsg(Rectangle rect, string msg)
+{
+    public Rectangle rect= rect;
+    public string msg = msg;
 }
 
 class DrawLayout : ILayout
@@ -37,6 +43,7 @@ class DrawLayout : ILayout
     readonly int spaceSize = 18;
     int x;
     int y;
+    List<ErrorMsg> errorMsgs = [];
 
     public DrawLayout()
     {
@@ -55,18 +62,19 @@ class DrawLayout : ILayout
         x += spaceSize;
     }
     
+    public void DrawText(string text, Color color, string errorMsg)
+    {
+        Raylib.DrawText(text, x, y, fontSize, color);
+        var length = Raylib.MeasureText(text, fontSize) + spacing;
+        errorMsgs.Add(new ErrorMsg(new Rectangle(x, y, length, fontSize), errorMsg));
+        Raylib.DrawLineEx(new (x, y+fontSize), new (x+length, y+fontSize), 3, Color.Red);
+        x += length;
+    }
+
     public void DrawText(string text, Color color)
     {
         Raylib.DrawText(text, x, y, fontSize, color);
         x += Raylib.MeasureText(text, fontSize) + spacing;
-    }
-
-    public void DrawInvalidText(string text)
-    {
-        Raylib.DrawText(text, x, y, fontSize, Color.White);
-        var length = Raylib.MeasureText(text, fontSize) + spacing;
-        Raylib.DrawLineEx(new (x, y+fontSize), new (x+length, y+fontSize), 3, Color.Red);
-        x += length;
     }
 
     public void DrawIndent(int indent, bool selected)
@@ -81,6 +89,22 @@ class DrawLayout : ILayout
             x += indentSize;
         }
         Raylib.DrawRectangle(x, y, 4, fontSize, new Color(0,0,0,0.3f));
+    }
+
+    public void DrawErrorMsgs()
+    {
+        var mousePos = Raylib.GetMousePosition();
+        foreach(var e in errorMsgs)
+        {
+            if(Raylib.CheckCollisionPointRec(mousePos, e.rect))
+            {
+                var width = Raylib.MeasureText(e.msg, fontSize) + 10;
+                var r = new Rectangle(e.rect.X + 5, e.rect.Y, width, lineSize);
+                Raylib.DrawRectangle((int)r.X, (int)r.Y, (int)r.Width, (int)r.Height, Color.Black); 
+                Raylib.DrawRectangleLinesEx(r, 2, Color.Red);
+                Raylib.DrawText(e.msg, (int)r.X, (int)r.Y, fontSize, Color.White);
+            }
+        }
     }
 }
 
@@ -110,11 +134,13 @@ class Tree
         {
             var tokens = new Tokens([..new Tokenizer(code).GetTokens()]);
             LineTree = new Parser(tokens).Parse();
+            ConnectVariables.Connect(this);
         }
         else if(Parent.LineTree is IParser parser)
         {
             var tokens = new Tokens([..new Tokenizer(code).GetTokens()]);
             LineTree = parser.Parse(tokens);
+            ConnectVariables.Connect(this);
         }
     }
 

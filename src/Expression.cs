@@ -9,22 +9,34 @@ interface IExpression
 
 class IdentifierExpr(string value) : IExpression
 {
-    public readonly string value = value;
+    public string value = value;
+    public Variable variable;
 
     public void Draw(ILayout layout)
     {
-        layout.DrawText(value, Color.Lime);
+        if(variable == null)
+        {
+            layout.DrawText(value, Color.Green, "Cant find variable");
+        }
+        else
+        {
+            layout.DrawText(value, Color.Green);
+        }
     }
 
     public string Type()
     {
-        return "NOT IMPLEMENTED YET";
+        if (variable == null)
+        {
+            return "error";
+        }
+        return variable.varInitializationStmt.expression.Type();
     }
 }
 
 class StringExpr(string value) : IExpression
 {
-    public readonly string value = value;
+    public string value = value;
 
     public void Draw(ILayout layout)
     {
@@ -38,24 +50,64 @@ class StringExpr(string value) : IExpression
 }
 
 
-class NumberExpr(string value) : IExpression
+class IntExpr : IExpression
 {
-    public readonly string value = value;
-    
-    public void Draw(ILayout layout)
+    public string text;
+    bool error;
+    public int value;
+
+    public IntExpr(string text)
     {
-        layout.DrawText(value, new Color(0.7f, 1f, 0.3f));
+        this.text = text;
+        error = !int.TryParse(text, out value);
     }
 
-    public string Type()
+    public void Draw(ILayout layout)
     {
-        return value.Contains('.') ? "float" : "int";
+        if (error)
+        {
+            layout.DrawText(text, new Color(0.7f, 1f, 0.3f), "Cant parse int");
+        }
+        else
+        {
+            layout.DrawText(text, new Color(0.7f, 1f, 0.3f));
+        }
+        
     }
+
+    public string Type() => "int";
+}
+
+class FloatExpr : IExpression
+{
+    public string text;
+    bool error;
+    public float value;
+
+    public FloatExpr(string text)
+    {
+        this.text = text;
+        error = !float.TryParse(text, out value);
+    }
+
+    public void Draw(ILayout layout)
+    {
+        if (error)
+        {
+            layout.DrawText(text, new Color(0.7f, 1f, 0.3f), "Cant parse float");
+        }
+        else
+        {
+            layout.DrawText(text, new Color(0.7f, 1f, 0.3f));
+        }
+    }
+
+    public string Type() => "float";
 }
 
 class BoolExpr(string value) : IExpression
 {
-    public readonly string value = value;
+    public string value = value;
 
     public void Draw(ILayout layout)
     {
@@ -71,8 +123,8 @@ class BoolExpr(string value) : IExpression
 
 class UnaryExpr(string op, IExpression expression) : IExpression
 {
-    public readonly string op = op;
-    public readonly IExpression expression = expression;
+    public string op = op;
+    public IExpression expression = expression;
 
     public void Draw(ILayout layout)
     {
