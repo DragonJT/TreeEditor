@@ -246,15 +246,4 @@ class Tree
             return tree;
         }
     }
-
-    public string ToC()
-    {
-        var code = "";
-        foreach(var c in children)
-        {
-            code+=c.lineTree.ToC(c);
-        }
-        return code;
-    }
-
 }

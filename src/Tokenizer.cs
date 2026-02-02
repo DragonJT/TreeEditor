@@ -10,6 +10,7 @@ enum TokenKind
     Squares,
     String,
     Comma,
+    Dot,
     Error,
 }
 
@@ -193,6 +194,11 @@ class Tokenizer(string code)
             else if (c == ',')
             {
                 tokens.Add(new (TokenKind.Comma, ","));
+                index++;
+            }
+            else if (c == '.')
+            {
+                tokens.Add(new (TokenKind.Dot, "."));
                 index++;
             }
             else if(c == '(')

@@ -4,13 +4,11 @@ using Raylib_cs;
 interface ILineTree
 {
     void Draw(ILayout layout);
-    string ToC(Tree tree);
 }
 
 interface IParameter
 {
     void Draw(ILayout layout);
-    string ToC();
 }
 
 interface IParser
@@ -37,11 +35,6 @@ class Arguments(IExpression[] args)
         }
         layout.DrawText(")", Color.White);
     }
-
-    public string ToC()
-    {
-        return "("+string.Join(", ", args.Select(a=>a.ToC()))+")";
-    }
 }
 
 class Invocation(string name, Arguments args) : ILineTree, IExpression
@@ -53,44 +46,6 @@ class Invocation(string name, Arguments args) : ILineTree, IExpression
     {
         layout.DrawText(name, Color.Blue);
         args.Draw(layout);
-    }
-
-    public string ToC()
-    {
-        if(name == "Print")
-        {
-            if(args.args.Length != 1)
-            {
-                throw new Exception();
-            }
-            var arg = args.args[0];
-            var type = arg.Type();
-            if(type == "string")
-            {
-                return $"printf(\"%s\\n\", {arg.ToC()});\n";
-            }
-            else if(type == "int")
-            {
-                return $"printf(\"%i\\n\", {arg.ToC()});\n";
-            }
-            else if(type == "float")
-            {
-                return $"printf(\"%f\\n\", {arg.ToC()});\n";
-            }
-            else
-            {
-                throw new Exception();
-            }
-        }
-        else
-        {
-            return $"{name}{args.ToC()}";   
-        }
-    }
-
-    public string ToC(Tree tree)
-    {
-        return ToC()+";\n";
     }
 
     public string Type()
@@ -114,11 +69,6 @@ class WhileStmt(IExpression condition) : ILineTree, IParser
     {
         return new Parser(tokens).ParseStatement();
     }
-
-    public string ToC(Tree tree)
-    {
-        return $"while({condition.ToC()}){{\n{tree.ToC()}}}\n";
-    }
 }
 
 class Parameter(string type, string name) : IParameter
@@ -131,11 +81,6 @@ class Parameter(string type, string name) : IParameter
         layout.DrawText(type, Color.Magenta);
         layout.DrawSpace();
         layout.DrawText(name, Color.Blue);
-    }
-
-    public string ToC()
-    {
-        return $"{type} {name}";
     }
 }
 
@@ -157,11 +102,6 @@ class Parameters(IParameter[] parameters)
         }
         layout.DrawText(")", Color.White);
     }
-
-    public string ToC()
-    {
-        return "("+string.Join(',', parameters.Select(p=>p.ToC()))+")";
-    }
 }
 
 class MethodDecl(string type, string name, Parameters parameters) : ILineTree, IParser
@@ -182,11 +122,6 @@ class MethodDecl(string type, string name, Parameters parameters) : ILineTree, I
     {
         return new Parser(tokens).ParseStatement();
     }
-
-    public string ToC(Tree tree)
-    {
-        return $"{type} {name}{parameters.ToC()}{{\n{tree.ToC()}}}\n";
-    }
 }
 
 class FieldDecl(string type, string name) : ILineTree
@@ -199,11 +134,6 @@ class FieldDecl(string type, string name) : ILineTree
         layout.DrawText(type, Color.Magenta);
         layout.DrawSpace();
         layout.DrawText(name, Color.Blue);
-    }
-
-    public string ToC(Tree tree)
-    {
-        return $"{type} {name};\n";
     }
 }
 
@@ -222,11 +152,6 @@ class ClassDecl(string name) : ILineTree, IParser
     {
         return new Parser(tokens).ParseClassMember();
     }
-
-    public string ToC(Tree tree)
-    {
-        throw new Exception();
-    }
 }
 
 class SingletonDecl(string name) : ILineTree, IParser
@@ -244,11 +169,6 @@ class SingletonDecl(string name) : ILineTree, IParser
     {
         return new Parser(tokens).ParseClassMember();
     }
-
-    public string ToC(Tree tree)
-    {
-        return tree.ToC();
-    }
 }
 
 class Root : ILineTree, IParser
@@ -259,19 +179,9 @@ class Root : ILineTree, IParser
     {
         return new Parser(tokens).Parse();
     }
-
-    public string ToC(Tree tree)
-    {
-        throw new Exception();
-    }
 }
 
 class Empty : ILineTree
 {
     public void Draw(ILayout layout){}
-
-    public string ToC(Tree tree)
-    {
-        return "\n";
-    }
 }

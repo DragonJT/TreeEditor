@@ -13,11 +13,6 @@ class Invalid(string text) : IExpression, IParameter
         return text;
     }
 
-    public string ToC()
-    {
-        throw new Exception();
-    }
-
     public string Type()
     {
         throw new Exception();
@@ -35,11 +30,6 @@ class InvalidLine(string text) : ILineTree
     public string GetCode()
     {
         return text;
-    }
-
-    public string ToC(Tree tree)
-    {
-        throw new Exception();
     }
 }
 

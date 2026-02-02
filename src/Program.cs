@@ -1,43 +1,4 @@
 ﻿using Raylib_cs;
-using System.Diagnostics;
-
-class CompileAndRunC
-{
-    public static void Run(string ccode)
-    {
-        string buildDir = "build";
-        string cFile = "main.c";
-        string binary = "program";
-
-        Directory.CreateDirectory(buildDir);
-
-        File.WriteAllText(Path.Combine(buildDir, cFile), ccode);
-
-        Run("gcc", $"{buildDir}/{cFile} -o {buildDir}/{binary} -lraylib");
-        Run($"./{buildDir}/{binary}", "");
-    }
-
-    static void Run(string file, string args)
-    {
-        var p = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = file,
-                Arguments = args,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false
-            }
-        };
-
-        p.Start();
-        Console.Write(p.StandardOutput.ReadToEnd());
-        Console.Error.Write(p.StandardError.ReadToEnd());
-        p.WaitForExit();
-    }
-}
-
 
 static class Program
 {
@@ -76,11 +37,6 @@ static class Program
             }
             if (Raylib.IsKeyDown(KeyboardKey.LeftControl))
             {
-                if (IsKeyPressed(KeyboardKey.R))
-                {
-                    var ccode = "#include<stdio.h>\n" + "#include \"raylib.h\"\n" + root.ToC();
-                    CompileAndRunC.Run(ccode);
-                }
             }
             else
             {
