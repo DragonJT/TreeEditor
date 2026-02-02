@@ -87,28 +87,35 @@ class DrawLayout : ILayout
 class Tree
 {
     public Tree Parent { get; private set; }
-    ILineTree lineTree;
-    readonly List<Tree> children = [];
+    public ILineTree LineTree {get; private set;}
+    public readonly List<Tree> children = [];
 
     public bool IsRoot => Parent == null;
 
-    public Tree(bool isRoot = false)
+    public Tree()
     {
-        if (isRoot)
-        {
-            lineTree = new Root();
-        }
-        else
-        {
-            lineTree = new Empty();
-        }
+        LineTree = new Empty();
     }
 
     string GetCode()
     {
         var layout = new TextLayout();
-        lineTree.Draw(layout);
+        LineTree.Draw(layout);
         return layout.text;
+    }
+
+    void TryParse(string code)
+    {
+        if(Parent == null)
+        {
+            var tokens = new Tokens([..new Tokenizer(code).GetTokens()]);
+            LineTree = new Parser(tokens).Parse();
+        }
+        else if(Parent.LineTree is IParser parser)
+        {
+            var tokens = new Tokens([..new Tokenizer(code).GetTokens()]);
+            LineTree = parser.Parse(tokens);
+        }
     }
 
     public bool Backspace()
@@ -117,11 +124,7 @@ class Tree
         if(code.Length > 0)
         {
             code = code[..^1];
-            if(Parent.lineTree is IParser parser)
-            {
-                var tokens = new Tokens([..new Tokenizer(code).GetTokens()]);
-                lineTree = parser.Parse(tokens);
-            }
+            TryParse(code);
             return true;
         }
         return false;
@@ -131,30 +134,17 @@ class Tree
     {
         var code = GetCode();
         code += text;
-        if(Parent.lineTree is IParser parser)
-        {
-            var tokens = new Tokens([..new Tokenizer(code).GetTokens()]);
-            lineTree = parser.Parse(tokens);
-        }
+        TryParse(code);
     }
 
-    void Draw(DrawLayout layout, int indent)
+    public void Draw(DrawLayout layout, int indent)
     {
         layout.DrawIndent(indent, Program.selected == this);
-        lineTree.Draw(layout);
+        LineTree.Draw(layout);
         layout.NewLine();
         foreach(var c in children)
         {
             c.Draw(layout, indent + 1);
-        }
-    }
-
-    public void Draw()
-    {
-        DrawLayout layout = new();
-        foreach(var c in children)
-        {
-            c.Draw(layout, 0);
         }
     }
 
@@ -235,7 +225,7 @@ class Tree
     public Tree AddNextChild()
     {
         var tree = new Tree();
-        if(lineTree is IParser)
+        if(LineTree is IParser)
         {
             AddChild(tree, 0);
             return tree;

@@ -1,4 +1,5 @@
-﻿using Raylib_cs;
+﻿using System.Runtime.InteropServices;
+using Raylib_cs;
 
 static class Program
 {
@@ -14,15 +15,13 @@ static class Program
         Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
         Raylib.InitWindow(1000, 800, "TreeEditor");
         Raylib.MaximizeWindow();
-        Tree root = new(true);
-        selected = root.AddChild();
+        Tree root = new();
+        selected = root;
 
         while (!Raylib.WindowShouldClose())
         {
             Raylib.BeginDrawing();
             Raylib.ClearBackground(new Color(0.1f, 0.1f, 0.1f));
-
-            root.Draw();
 
             string str = "";
             int key = Raylib.GetCharPressed();
@@ -68,25 +67,31 @@ static class Program
                 {
                     if(!selected.Backspace())
                     {
-                        var oldParent = selected.Parent;
-                        var newParent = oldParent.Parent;
-                        if (!oldParent.IsRoot)
+                        if(!selected.IsRoot)
                         {
-                            selected.SetParentAfter(newParent, oldParent);
-                        }
-                        else
-                        {
-                            var i = selected.Index();
-                            if (i > 0)
+                            var oldParent = selected.Parent;
+                            var newParent = oldParent.Parent;
+                            if (!oldParent.IsRoot)
                             {
-                                selected.Delete();
-                                selected = oldParent.GetChild(i-1).LastChild();
+                                selected.SetParentAfter(newParent, oldParent);
+                            }
+                            else
+                            {
+                                var i = selected.Index();
+                                if (i > 0)
+                                {
+                                    selected.Delete();
+                                    selected = oldParent.GetChild(i-1).LastChild();
+                                }
                             }
                         }
                     }
                 }
             }
             
+            DrawLayout layout = new();
+            root.Draw(layout, 0);
+            Executer.Execute(root);
             Raylib.EndDrawing();
         }
 

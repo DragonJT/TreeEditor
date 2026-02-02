@@ -171,16 +171,6 @@ class SingletonDecl(string name) : ILineTree, IParser
     }
 }
 
-class Root : ILineTree, IParser
-{
-    public void Draw(ILayout layout){}
-
-    public ILineTree Parse(Tokens tokens)
-    {
-        return new Parser(tokens).Parse();
-    }
-}
-
 class Empty : ILineTree
 {
     public void Draw(ILayout layout){}
