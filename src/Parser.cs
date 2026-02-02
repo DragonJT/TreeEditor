@@ -1,4 +1,5 @@
 
+
 class Invalid(string text) : IExpression, IParameter
 {
     public string text = text;
@@ -42,17 +43,71 @@ class InvalidLine(string text) : ILineTree
     }
 }
 
-class Parser
+class Tokens
 {
-    string code;
-    readonly List<Token> tokens;
-    int index = 0;
+    readonly Token[] allTokens;
+    readonly Token[] tokens;
 
-    public Parser(string code)
+    public int Count => tokens.Length;
+
+    public Tokens(Token[] allTokens)
     {
-        this.code = code;
-        tokens = new Tokenizer(code).GetTokens();
+        this.allTokens = allTokens;
+        tokens = [.. allTokens.Where(t=>t.kind != TokenKind.Whitespace)];
     }
+
+    public string GetCode()
+    {
+        string code = "";
+        foreach(var t in allTokens)
+        {
+            code += t.value;
+        }
+        return code;
+    }
+
+    public Token this[int index]
+    {
+        get => tokens[index];
+    } 
+
+    public Tokens[] Split(TokenKind kind)
+    {
+        List<Token> splitTokens = [];
+        List<Tokens> result = [];
+        foreach(var t in allTokens)
+        {
+            if(t.kind == kind)
+            {
+                result.Add(new Tokens([.. splitTokens]));
+                splitTokens.Clear();
+            }
+            else
+            {
+                splitTokens.Add(t);
+            }
+        }
+        result.Add(new Tokens([.. splitTokens]));
+        return [..result];
+    }
+
+    public Tokens GetTokensAfter(int id)
+    {
+        var token = tokens[id];
+        var startIndex = allTokens.IndexOf(token);
+        return new Tokens(allTokens[(startIndex+1)..]);
+    }
+
+    public bool IsEmpty()
+    {
+        return tokens.Length == 0;
+    }
+}
+
+class Parser(Tokens tokens)
+{
+    readonly Tokens tokens = tokens;
+    int index = 0;
 
     bool IsKeyword(string keyword)
     {
@@ -110,7 +165,7 @@ class Parser
             {
                 return new ClassDecl(name);
             }
-            return new InvalidLine(code);
+            return new InvalidLine(tokens.GetCode());
         }
         else if (IsKeyword("singleton"))
         {
@@ -118,11 +173,11 @@ class Parser
             {
                 return new SingletonDecl(name);
             }
-            return new InvalidLine(code);
+            return new InvalidLine(tokens.GetCode());
         }
         else
         {
-            return new InvalidLine(code);
+            return new InvalidLine(tokens.GetCode());
         }
     }
 
@@ -132,7 +187,7 @@ class Parser
         {
             return new Parameter(type, name);
         }
-        return new Invalid(code);
+        return new Invalid(tokens.GetCode());
     }
 
     public ILineTree ParseClassMember()
@@ -151,21 +206,38 @@ class Parser
                 }
                 else if (IsParentheses(out string parameterCode) && AtEnd())
                 {
-                    var parameters = parameterCode.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(c => new Parser(c).ParseParameter()).ToArray();
-                    return new MethodDecl(type, name, parameters);
+                    var splitTokens = new Tokens([.. new Tokenizer(parameterCode[1..^1]).GetTokens()])
+                        .Split(TokenKind.Comma);
+                    if(splitTokens.Length == 1 && splitTokens[0].IsEmpty())
+                    {
+                        return new MethodDecl(type, name, new Parameters([]));
+                    }
+                    var parameters = splitTokens.Select(t => new Parser(t).ParseParameter()).ToArray();
+                    return new MethodDecl(type, name, new Parameters(parameters));
                 }
                 else
                 {
-                    return new InvalidLine(code);
+                    return new InvalidLine(tokens.GetCode());
                 }
             }
-            return new InvalidLine(code);
+            return new InvalidLine(tokens.GetCode());
         }
         else
         {
-            return new InvalidLine(code);
+            return new InvalidLine(tokens.GetCode());
         }
+    }
+
+    static Invocation ParseInvocation(string name, string argsCode)
+    {
+        var splitTokens = new Tokens([.. new Tokenizer(argsCode[1..^1]).GetTokens()])
+                .Split(TokenKind.Comma);
+        if(splitTokens.Length == 1 && splitTokens[0].IsEmpty())
+        {
+            return new Invocation(name, new Arguments([]));
+        }
+        var args = splitTokens.Select(t => new Parser(t).ParseExpression()).ToArray();
+        return new Invocation(name, new Arguments(args));
     }
 
     IExpression ParseExpression()
@@ -189,8 +261,26 @@ class Parser
             {
                 return new BoolExpr("false");
             }
+            else if(t.kind == TokenKind.Identifier)
+            {
+                return new IdentifierExpr(t.value);
+            }
         }
-        return new Invalid(code);
+        if(tokens.Count == 2)
+        {
+            if(tokens[0].kind == TokenKind.Identifier && tokens[1].kind == TokenKind.Parentheses)
+            {
+                return ParseInvocation(tokens[0].value, tokens[1].value);
+            }
+        }
+        if(tokens.Count > 1)
+        {
+            if(tokens[0].kind == TokenKind.Operator && tokens[0].value == "!")
+            {
+                return new UnaryExpr(tokens[0].value, new Parser(tokens.GetTokensAfter(0)).ParseExpression());
+            }
+        }        
+        return new Invalid(tokens.GetCode());
     }
 
     public ILineTree ParseStatement()
@@ -201,21 +291,20 @@ class Parser
         }
         else if(IsIdentifier(out string name))
         {
-            if (IsParentheses(out string exprcode) && AtEnd())
+            if (IsParentheses(out string argsCode) && AtEnd())
             {          
-                var args = new Arguments([..exprcode.Split(',').Select(c=>new Parser(c).ParseExpression())]);
-                return new InvocationStmt(name, args);
+                return ParseInvocation(name, argsCode);
             }
-            return new InvalidLine(code);
+            return new InvalidLine(tokens.GetCode());
         }
         else if (IsKeyword("while"))
         {
-            var condition = new Parser(code[5..]).ParseExpression();
+            var condition = new Parser(tokens.GetTokensAfter(0)).ParseExpression();
             return new WhileStmt(condition);
         }
         else
         {
-            return new InvalidLine(code);
+            return new InvalidLine(tokens.GetCode());
         }
     }
 

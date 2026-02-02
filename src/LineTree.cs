@@ -15,7 +15,7 @@ interface IParameter
 
 interface IParser
 {
-    ILineTree Parse(string code);
+    ILineTree Parse(Tokens tokens);
 }
 
 
@@ -44,7 +44,7 @@ class Arguments(IExpression[] args)
     }
 }
 
-class InvocationStmt(string name, Arguments args) : ILineTree
+class Invocation(string name, Arguments args) : ILineTree, IExpression
 {
     public readonly string name = name;
     public readonly Arguments args = args;
@@ -55,7 +55,7 @@ class InvocationStmt(string name, Arguments args) : ILineTree
         args.Draw(layout);
     }
 
-    public string ToC(Tree tree)
+    public string ToC()
     {
         if(name == "Print")
         {
@@ -84,8 +84,18 @@ class InvocationStmt(string name, Arguments args) : ILineTree
         }
         else
         {
-            return $"{name}{args.ToC()};\n";   
+            return $"{name}{args.ToC()}";   
         }
+    }
+
+    public string ToC(Tree tree)
+    {
+        return ToC()+";\n";
+    }
+
+    public string Type()
+    {
+        return "NOT IMPLEMENTED YET";
     }
 }
 
@@ -96,12 +106,13 @@ class WhileStmt(IExpression condition) : ILineTree, IParser
     public void Draw(ILayout layout)
     {
         layout.DrawText("while", Color.Magenta);
+        layout.DrawSpace();
         condition.Draw(layout);
     }
 
-    public ILineTree Parse(string code)
+    public ILineTree Parse(Tokens tokens)
     {
-        return new Parser(code).ParseStatement();
+        return new Parser(tokens).ParseStatement();
     }
 
     public string ToC(Tree tree)
@@ -128,17 +139,12 @@ class Parameter(string type, string name) : IParameter
     }
 }
 
-class MethodDecl(string type, string name, IParameter[] parameters) : ILineTree, IParser
+class Parameters(IParameter[] parameters)
 {
-    public readonly string type = type;
-    public readonly string name = name;
     public readonly IParameter[] parameters = parameters;
 
     public void Draw(ILayout layout)
     {
-        layout.DrawText(type, Color.Magenta);
-        layout.DrawSpace();
-        layout.DrawText(name, Color.Blue);
         layout.DrawText("(", Color.White);
         for(var i = 0; i < parameters.Length; i++)
         {
@@ -152,15 +158,34 @@ class MethodDecl(string type, string name, IParameter[] parameters) : ILineTree,
         layout.DrawText(")", Color.White);
     }
 
-    public ILineTree Parse(string code)
+    public string ToC()
     {
-        return new Parser(code).ParseStatement();
+        return "("+string.Join(',', parameters.Select(p=>p.ToC()))+")";
+    }
+}
+
+class MethodDecl(string type, string name, Parameters parameters) : ILineTree, IParser
+{
+    public readonly string type = type;
+    public readonly string name = name;
+    public readonly Parameters parameters = parameters;
+
+    public void Draw(ILayout layout)
+    {
+        layout.DrawText(type, Color.Magenta);
+        layout.DrawSpace();
+        layout.DrawText(name, Color.Blue);
+        parameters.Draw(layout);
+    }
+
+    public ILineTree Parse(Tokens tokens)
+    {
+        return new Parser(tokens).ParseStatement();
     }
 
     public string ToC(Tree tree)
     {
-        var parametersC = string.Join(',', parameters.Select(p=>p.ToC()));
-        return $"{type} {name}({parametersC}){{\n{tree.ToC()}}}\n";
+        return $"{type} {name}{parameters.ToC()}{{\n{tree.ToC()}}}\n";
     }
 }
 
@@ -193,9 +218,9 @@ class ClassDecl(string name) : ILineTree, IParser
         layout.DrawText(name, Color.Blue);
     }
 
-    public ILineTree Parse(string code)
+    public ILineTree Parse(Tokens tokens)
     {
-        return new Parser(code).ParseClassMember();
+        return new Parser(tokens).ParseClassMember();
     }
 
     public string ToC(Tree tree)
@@ -215,9 +240,9 @@ class SingletonDecl(string name) : ILineTree, IParser
         layout.DrawText(name, Color.Blue);
     }
 
-    public ILineTree Parse(string code)
+    public ILineTree Parse(Tokens tokens)
     {
-        return new Parser(code).ParseClassMember();
+        return new Parser(tokens).ParseClassMember();
     }
 
     public string ToC(Tree tree)
@@ -230,9 +255,9 @@ class Root : ILineTree, IParser
 {
     public void Draw(ILayout layout){}
 
-    public ILineTree Parse(string code)
+    public ILineTree Parse(Tokens tokens)
     {
-        return new Parser(code).Parse();
+        return new Parser(tokens).Parse();
     }
 
     public string ToC(Tree tree)

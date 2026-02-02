@@ -119,7 +119,8 @@ class Tree
             code = code[..^1];
             if(Parent.lineTree is IParser parser)
             {
-                lineTree = parser.Parse(code);
+                var tokens = new Tokens([..new Tokenizer(code).GetTokens()]);
+                lineTree = parser.Parse(tokens);
             }
             return true;
         }
@@ -132,7 +133,8 @@ class Tree
         code += text;
         if(Parent.lineTree is IParser parser)
         {
-            lineTree = parser.Parse(code);
+            var tokens = new Tokens([..new Tokenizer(code).GetTokens()]);
+            lineTree = parser.Parse(tokens);
         }
     }
 

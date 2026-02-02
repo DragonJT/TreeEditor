@@ -1,6 +1,7 @@
 
 enum TokenKind
 {
+    Whitespace,
     Identifier,
     Keyword,
     Number,
@@ -14,15 +15,16 @@ enum TokenKind
 
 class Token(TokenKind kind, string value)
 {
-    public TokenKind kind = kind;
-    public string value = value;
+    public readonly TokenKind kind = kind;
+    public readonly string value = value;
 }
 
 class Tokenizer(string code)
 {
     readonly string code = code;
     int index = 0;
-    readonly HashSet<string> operators = ["+", "-", "&", "|", "=", "<", ">", "<=", ">=", "&&", "||", "==", "++", "--"];
+    readonly HashSet<string> operators = ["!", "+", "-", "&", "|", "=", "<", ">", 
+        "<=", ">=", "&&", "||", "==", "++", "--"];
     readonly HashSet<string> keywords = ["static", "class", "singleton", 
         "if", "while", "this", "var", "return", "true", "false"];
 
@@ -43,7 +45,7 @@ class Tokenizer(string code)
 
     Token ReadOpenClose(char open, char close, TokenKind kind)
     {
-        List<char> chars = [];
+        List<char> chars = [code[index]];
         index++;
         int depth = 1;
         while (true)
@@ -63,7 +65,7 @@ class Tokenizer(string code)
                 if(depth <= 0)
                 {
                     index++;
-                    return new Token(kind, new string([..chars]));
+                    return new Token(kind, new string([..chars, c]));
                 }
             }
             index++;
@@ -114,6 +116,7 @@ class Tokenizer(string code)
             }
             else if (c == ' ')
             {
+                tokens.Add(new (TokenKind.Whitespace, c.ToString()));
                 index++;
             }
             else if(IsDigit(c))
@@ -127,7 +130,7 @@ class Tokenizer(string code)
                         break;
                     }
                     c = code[index];
-                    if(float.TryParse(new string([..chars, c]), out float result))
+                    if(IsDigit(c) || c=='.')
                     {
                         chars.Add(c);
                         index++;
@@ -202,7 +205,7 @@ class Tokenizer(string code)
             }
             else
             {
-                tokens.Add(new(TokenKind.Error, new string(c.ToString())));
+                tokens.Add(new(TokenKind.Error, c.ToString()));
                 index++;
             }
         }
